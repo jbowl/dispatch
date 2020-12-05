@@ -1,4 +1,3 @@
-
 //https://www.openbrewerydb.org/documentation/01-listbreweries
 // https://stackoverflow.com/questions/56082458/grpc-organization-in-microservices
 // http://www.inanzzz.com/index.php/post/fczr/creating-a-simple-grpc-client-and-server-application-with-golang
@@ -7,25 +6,24 @@
 
 // docker build -f ./build/package/Dockerfile -t dispatch ../
 
-
 package main
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc"
 	"io"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync/atomic"
 	"time"
+
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 
 	pb "github.com/jbowl/apibrewery"
-
 )
 
 type key int
@@ -35,17 +33,17 @@ const (
 )
 
 var (
-	listenAddr string
-	healthy    int32
-    gTLS_bypass string
+	listenAddr  string
+	healthy     int32
+	gTLS_bypass string
 )
 
 type dispatchServer struct {
-//	db        db.DWDB
-//	aiq       aiq.AIQ
-	handler   http.Handler
-//	verifykey *rsa.PublicKey
-	healthy   int64
+	//	db        db.DWDB
+	//	aiq       aiq.AIQ
+	handler http.Handler
+	//	verifykey *rsa.PublicKey
+	healthy int64
 
 	client pb.BreweryServiceClient
 }
@@ -59,8 +57,6 @@ func respondWithDetails(w http.ResponseWriter, details pb.ProblemDetails) {
 	json.NewEncoder(w).Encode(&details)
 }
 
-
-
 func (s *dispatchServer) NewRouter() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 
@@ -68,17 +64,7 @@ func (s *dispatchServer) NewRouter() *mux.Router {
 	r.HandleFunc("/breweries", s.breweries).Methods("GET", "OPTIONS")
 	r.HandleFunc("/breweries/search", s.search).Methods("GET")
 
-    return r
-}
-
-func (s *dispatchServer) healthz__() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.LoadInt32(&healthy) == 1 {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		w.WriteHeader(http.StatusServiceUnavailable)
-	})
+	return r
 }
 
 func (s *dispatchServer) healthz(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +82,6 @@ func (s *dispatchServer) healthz(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(&ret)
 	}
 }
-
 
 func (s *dispatchServer) search(w http.ResponseWriter, r *http.Request) {
 	//	keys := r.URL.Query()
@@ -128,7 +113,6 @@ func (s *dispatchServer) search(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(r.URL.RawQuery))
 }
 
-
 func enableCors(w *http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	// if !whitelisted return
@@ -141,18 +125,17 @@ func enableCors(w *http.ResponseWriter, r *http.Request) {
 }
 
 func (s *dispatchServer) breweries(w http.ResponseWriter, r *http.Request) {
-//	keys := r.URL.Query()
+	//	keys := r.URL.Query()
 
-//	city := keys.Get("by_city")
+	//	city := keys.Get("by_city")
 
 	if (*r).Method == "OPTIONS" {
-		enableCors(&w,r)
+		enableCors(&w, r)
 		return
 	}
 
-
 	log.Printf("breweries")
-    log.Printf(r.URL.RawQuery)
+	log.Printf(r.URL.RawQuery)
 
 	filter := pb.Filter{By: r.URL.RawQuery}
 
@@ -160,18 +143,16 @@ func (s *dispatchServer) breweries(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	stream, err := s.client.ListBreweries(ctx, &filter)
 	if err != nil {
-			respondWithDetails(w, pb.ProblemDetails{
-				Detail:   err.Error(),
-				Type:     "",
-				Title:    http.StatusText(http.StatusInternalServerError),
-				Status:   http.StatusInternalServerError,
-				Instance: "",
-			})
-			//respondToClientWithError(w, err)
-			return
+		respondWithDetails(w, pb.ProblemDetails{
+			Detail:   err.Error(),
+			Type:     "",
+			Title:    http.StatusText(http.StatusInternalServerError),
+			Status:   http.StatusInternalServerError,
+			Instance: "",
+		})
+		//respondToClientWithError(w, err)
+		return
 	}
-
-
 
 	br := make([]pb.BreweryResult, 0)
 
@@ -184,19 +165,19 @@ func (s *dispatchServer) breweries(w http.ResponseWriter, r *http.Request) {
 			log.Printf("%v.ListFeatures(_) = _, %v", s.client, err)
 		}
 		br = append(br, pb.BreweryResult{
-			ID:      brewery.GetId(),
-			Name:    brewery.GetName(),
-			BreweryType: brewery.GetType(),
-			Street: brewery.GetStreet(),
-			City:    brewery.GetCity(),
-			State: brewery.GetState(),
+			ID:              brewery.GetId(),
+			Name:            brewery.GetName(),
+			BreweryType:     brewery.GetType(),
+			Street:          brewery.GetStreet(),
+			City:            brewery.GetCity(),
+			State:           brewery.GetState(),
 			CountryProvince: brewery.GetCountryprov(),
-			PostalCode: brewery.GetPostalcode(),
-			Country: brewery.GetCountry(),
-			Longitude: brewery.GetLongitude(),
-			Latitude: brewery.GetLatitude(),
-			Phone: brewery.GetPhone(),
-			Website: brewery.GetWebsiteUrl(),
+			PostalCode:      brewery.GetPostalcode(),
+			Country:         brewery.GetCountry(),
+			Longitude:       brewery.GetLongitude(),
+			Latitude:        brewery.GetLatitude(),
+			Phone:           brewery.GetPhone(),
+			Website:         brewery.GetWebsiteUrl(),
 		})
 
 		//log.Printf("Brewery ID: %d name: %q website: %q", brewery.GetId(), brewery.GetName(), brewery.GetWebsiteUrl())
@@ -208,82 +189,50 @@ func (s *dispatchServer) breweries(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-
 	// log as JSON not default ASCII
 	log.SetFormatter(&log.JSONFormatter{})
-
-
-	/*
-		var file, err = os.OpenFile("./ptaas.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			fmt.Println("Could Not Open Log File : " + err.Error())
-		}
-
-		// log to stdout not default stderr
-		log.SetOutput(file)
-	*/
 	log.SetOutput(os.Stdout)
 	// only log warning severity or above
 	//	log.SetLevel(log.WarnLevel)
 
-
 	log.Printf("init")
-
 }
 
 func run() error {
-
 	// runtime environment variables
 	listenPort := os.Getenv("PORT")
 	gTLS_bypass = os.Getenv("TLS_BYPASS")
 
-	network :=  os.Getenv("NETWORK")
+	network := os.Getenv("NETWORK")
 
-	if  len(listenPort) == 0 || len(gTLS_bypass) == 0 || len(network) == 0{
+	if len(listenPort) == 0 || len(gTLS_bypass) == 0 || len(network) == 0 {
 		log.WithFields(log.Fields{
-			"PORT":  listenPort,
+			"PORT":       listenPort,
 			"TLS_BYPASS": gTLS_bypass,
-			"NETWORK" : network,
+			"NETWORK":    network,
 		}).Fatal("env arg missing")
 	}
 
 	log.WithFields(log.Fields{
-		"PORT":  listenPort,
+		"PORT":       listenPort,
 		"TLS_BYPASS": gTLS_bypass,
-		"NETWORK" : network,
+		"NETWORK":    network,
 	}).Info("starting up with these settings")
 
-
-
-
-	//flag.StringVar(&listenAddr, "listen-addr", ":5000", "server listen address")
-	//flag.Parse()
-
-
-//	logger := log.New(os.Stdout, "http: ", log.LstdFlags)
-//	logger.Println("Server is starting...")
-
-	dispatch := dispatchServer{
-	}
+	dispatch := dispatchServer{}
 
 	dispatch.handler = dispatch.NewRouter()
 
-
 	//router := http.NewServeMux()
-//	router.Handle("/", index())
-//	router.Handle("/healthz", healthz())
+	//	router.Handle("/", index())
+	//	router.Handle("/healthz", healthz())
 
 	nextRequestID := func() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 
-
 	// for healthz call
 	atomic.StoreInt64(&dispatch.healthy, time.Now().UnixNano())
-
-
-
-
 
 	httpServer := http.Server{
 		Addr:         ":" + listenPort,
@@ -293,32 +242,30 @@ func run() error {
 		Handler:      tracing(nextRequestID)(logging()(dispatch.NewRouter())),
 	}
 
-
 	///////// grpc ->
 
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 
-//	opts = append(opts, grpc.WithBlock())
+	//	opts = append(opts, grpc.WithBlock())
 
 	log.Printf("dialing")
 
-//	conn, err := grpc.Dial("localhost:50051", opts...)
+	//	conn, err := grpc.Dial("localhost:50051", opts...)
 	//conn, err := grpc.Dial("breweryctr:50051", opts...)
 
 	log.Printf(network)
 
 	log.Printf(network + ":50051")
 
-	conn, err := grpc.Dial(network + ":50051", opts...)
+	conn, err := grpc.Dial(network+":50051", opts...)
 	if err != nil {
 		log.Printf("fail to dial: %v", err)
-	//	log.Fatalf("fail to dial: %v", err)
+		//	log.Fatalf("fail to dial: %v", err)
 	}
 	log.Printf("dialed")
 	defer conn.Close()
 	dispatch.client = pb.NewBreweryServiceClient(conn)
-
 
 	///////// <- grpc
 
@@ -353,9 +300,8 @@ func run() error {
 	return nil
 }
 
-
 func main() {
-
+	// not of value as a docker container
 	pid := os.Getpid()
 	fmt.Printf("pid for %s = %d\n", os.Args[0], pid)
 
@@ -395,7 +341,6 @@ func logging() func(http.Handler) http.Handler {
 			//setResponseHeaders(&w, r)
 			// needs to be removed and addressed via a whitelist lookup
 			enableCors(&w, r)
-
 
 			defer func() {
 				requestID, ok := r.Context().Value(requestIDKey).(string)
