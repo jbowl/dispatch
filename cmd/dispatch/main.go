@@ -130,7 +130,7 @@ func (s *dispatchServer) breweries(w http.ResponseWriter, r *http.Request) {
 	//	city := keys.Get("by_city")
 
 	if (*r).Method == "OPTIONS" {
-		enableCors(&w, r)
+		//	enableCors(&w, r)
 		return
 	}
 
